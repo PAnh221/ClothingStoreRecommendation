@@ -127,7 +127,7 @@ def recommend(userId):
     # Close connection
     cursor.close()
 
-    return jsonify({'wishlist': recommend_list})
+    return jsonify({'list': recommend_list})
 
 
 app.run(host='localhost', port=8081)
