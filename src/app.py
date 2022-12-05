@@ -1,12 +1,13 @@
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify
 from flask_mysqldb import MySQL
 # pip install Flask-Cors==1.10.3
 from flask_cors import CORS
 import random
+from config.helper_function import *  
+from repository.db_query import *
 # from tabulate import tabulate
 
 app = Flask(__name__)
@@ -19,32 +20,19 @@ app.config['MYSQL_DB'] = 'clothing_store'
 
 mysql = MySQL(app)
 
-
-@app.route('/recommend/<userId>', methods=['GET'])
-def recommend(userId):
-    # Query
-    getall_product_query_string = "select p.id, category_id, name, t.price from products p, types t where p.id = t.product_id group by p.id"
-
-    getall_wishlist_query_string = "select p.id ,p.category_id, p.name, w.price from wishlists w, products p where w.product_id = p.id and w.user_id=" + userId
-
+@app.route('/recommend/<user_id>', methods=['GET'])
+def recommend(user_id):
     cursor = mysql.connection.cursor()
 
     # Query all products in DB
-    cursor.execute(getall_product_query_string)
-
-    # Qurn query data into table
-    row_headers = [x[0] for x in cursor.description]
-    data = cursor.fetchall()
-    json_data = []
-    for result in data:
-        json_data.append(dict(zip(row_headers, result)))
+    cursor.execute(getall_product_query_string())
 
     col_names = ["id", "category_id", "name", "price"]
 
-    table_product_data = pd.DataFrame(data=json_data)
+    table_product_data = pd.DataFrame(data=json_transform(cursor))
 
     # Get all product id in wishlist
-    cursor.execute(getall_wishlist_query_string)
+    cursor.execute(getall_wishlist_query_string(user_id))
     data = cursor.fetchall()
 
     # Array contains all productId in wishlist
@@ -70,27 +58,13 @@ def recommend(userId):
     # Calculate cosine similarity based on count matrix vectors
     cosineSimilarity = cosine_similarity(matrix)
 
-    def getIndexById(id):
-        i = table_product_data.index
-        index = table_product_data["id"] == id
-        result = i[index]
-        listResult = result.tolist()
-        return listResult[0]
-
-
-    def getProductName(index):
-        return table_product_data[table_product_data.index == index]["name"].values[0]
-
-    def getIdByIndex(index):
-        return table_product_data[table_product_data.index == index]["id"].values[0]
-
     # Return array
     recommend_list = []
 
     # Loop id in product in wishlist
     for Id in list_product_id:
         # calculate cosine beetween 2 vectors & sort by highest similarity
-        similar_products = list(enumerate(cosineSimilarity[getIndexById(Id)]))
+        similar_products = list(enumerate(cosineSimilarity[getIndexById(Id, table_product_data)]))
         sorted_similar_products = sorted(
             similar_products, key=lambda x: x[1], reverse=True)
 
@@ -98,27 +72,17 @@ def recommend(userId):
         i = 0
         for product in sorted_similar_products:
             # Remove same product in wishlist
-            if (getProductName(product[0]) != getProductName(getIndexById(Id))):
+            if (getProductName(product[0], table_product_data) != getProductName(getIndexById(Id, table_product_data), table_product_data)):
                 # maximum 100 recommened products
                 if (len(recommend_list) > 48):
                     break
 
                 # query for each product by id
                 # product[0] = index of recommended product in matrix
-                pros_query_string = "select p.id, p.name, p.image, p.avg_rating, t.price from products p, types t where t.product_id = p.id and p.id = " + \
-                    str(getIdByIndex(product[0])) + " group by p.id"
-                cursor.execute(pros_query_string)
-                data = cursor.fetchall()
-
-                # convert to json for api
-                row_headers = [x[0] for x in cursor.description]
-                json_recommend_list = []
-                for product in data:
-                    json_recommend_list.append(dict(zip(row_headers, product)))
+                cursor.execute(get_pros_query_string(getIdByIndex(product[0], table_product_data)))
 
                 # push to api list
-                recommend_list += json_recommend_list
-
+                recommend_list += json_transform(cursor)
                 i = i + 1
 
                 # maximum 5 recommend products per
