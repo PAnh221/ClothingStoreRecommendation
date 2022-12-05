@@ -47,8 +47,7 @@ def recommend(userId):
     listProductId = []
     for product in data:
         listProductId.append(product[0])
-    print(listProductId)
-    cursor.close()
+    # print(listProductId)
 
     # print(table_product_data)
     # Tạo ra một column để gom nhóm các features
@@ -90,13 +89,23 @@ def recommend(userId):
         for product in sortedSimilarProduct:
             if (getProductName(product[0]) != getProductName(getIndexById(Id))):
                 # print(getProductName(product[0]))
+                # if (len(recommendList) > 100):
+                #     break
+                getProductById_query_string = "select p.id, p.name, p.image, p.avg_rating, t.price from products p, types t where t.product_id = p.id and p.id=" + Id + "group by p.id"
+                cursor.execute(getAllProduct_query_string)
+                data = cursor.fetchall()
+                print(data)
+
                 recommendList.append(getProductName(product[0]))
                 i = i + 1
-                if i > 2:
+                if i > 4:
                     break
     
-    print(recommendList)
 
+
+    # print(recommendList)
+
+    cursor.close()
 
     return jsonify({'wishlist': json_data})
 
