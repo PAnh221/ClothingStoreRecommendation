@@ -5,6 +5,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from flask import Flask, jsonify, render_template, request
 from flask_mysqldb import MySQL
 # pip install Flask-Cors==1.10.3
+from flask_cors import CORS
 # from tabulate import tabulate
 
 app = Flask(__name__)
