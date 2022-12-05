@@ -4,9 +4,11 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from flask import Flask, jsonify, render_template, request
 from flask_mysqldb import MySQL
+# pip install Flask-Cors==1.10.3
 # from tabulate import tabulate
 
 app = Flask(__name__)
+cors = CORS(app)
 
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
