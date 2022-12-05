@@ -18,13 +18,10 @@ mysql = MySQL(app)
 
 @app.route('/recommend/<userId>', methods=['GET'])
 def recommend(userId):
-    # if request.method == 'GET':
-    #     return "Login via the login Form"
-
     # query
     getAllProduct_query_string = "select p.id, category_id, name, t.price from products p, types t where p.id = t.product_id group by p.id"
 
-    getAllWishList_query_string = "select p.id ,p.category_id, p.name, w.price from wishlists w, products p where w.id = p.id and w.user_id=" + userId
+    getAllWishList_query_string = "select p.id ,p.category_id, p.name, w.price from wishlists w, products p where w.product_id = p.id and w.user_id=" + userId
 
     cursor = mysql.connection.cursor()
 
@@ -37,16 +34,21 @@ def recommend(userId):
     json_data = []
     for result in data:
         json_data.append(dict(zip(row_headers, result)))
-    cursor.close()
 
     col_names = ["id", "category_id", "name", "price"]
 
-    # print(tabulate(data, headers=col_names))
-    # table_product_data = tabulate(data, headers=col_names)
-
-
-
     table_product_data = pd.DataFrame(data=json_data)
+
+    # get all product id in wishlist
+    cursor.execute(getAllWishList_query_string)
+    data = cursor.fetchall()
+
+    # array contains all productId in wishlist
+    listProductId = []
+    for product in data:
+        listProductId.append(product[0])
+    print(listProductId)
+    cursor.close()
 
     # print(table_product_data)
     # Tạo ra một column để gom nhóm các features
@@ -66,45 +68,36 @@ def recommend(userId):
     # Tính sự tương đồng Cosine dựa trên các vector của count matrix
     cosineSimilarity = cosine_similarity(matrix)
 
-    # similarityFrame = pd.DataFrame(cosineSimilarity)
-
-    # get index in table
     def getIndexById(id):
         i = table_product_data.index
         index = table_product_data["id"] == id
         result = i[index]
         listResult = result.tolist()
-        
         return listResult[0]
 
     # print(getIndexById(39))
 
     def getProductName(index):
         return table_product_data[table_product_data.index == index]["name"].values[0]
-    
+
+    recommendList = []
     # List tương đồng cosine cho các movies của input movie
-    similarProducts = list(enumerate(cosineSimilarity[getIndexById(39)]))
-
-    listId = [12, 13, 14, 15]
-
-    finalList = pd.DataFrame()
-
-    for Id in listId:
-        finalList = pd.concat([finalList, pd.DataFrame(enumerate(cosineSimilarity[getIndexById(Id)]))], ignore_index=True, axis = 1)
-
-    print(finalList)
-    # Sort movie, lấy giá trị thứ 2 của vector
-    # e.g: Ta muốn chọn tương đồng cho movie A có cosine = 1, movie B có cosine = 0.7, movie C có cosine = 0.4
-    # Ta có mảng vector[(0, 1), (1, 0.7), (2, 0.4)]
-    # Ta cần lấy giá trị cosine tức giá trị thứ 2 của vector để so sánh tương đồng, nên
-    # chọn x[1]
-    sortedSimilarProduct = sorted(similarProducts, key = lambda x: x[1], reverse = True)
-
-    print("Recommend for you:")
-    print(finalList.head(10).sum(axis = 1).sort_values(ascending = False))
+    for Id in listProductId:
+        similarProducts = list(enumerate(cosineSimilarity[getIndexById(Id)]))
+        sortedSimilarProduct = sorted(similarProducts, key = lambda x: x[1], reverse = True)
+        # print(sortedSimilarProduct)
+        i = 0
+        for product in sortedSimilarProduct:
+            if (getProductName(product[0]) != getProductName(getIndexById(Id))):
+                # print(getProductName(product[0]))
+                recommendList.append(getProductName(product[0]))
+                i = i + 1
+                if i > 2:
+                    break
+    
+    print(recommendList)
 
 
     return jsonify({'wishlist': json_data})
-
 
 app.run(host='localhost', port=8081)
