@@ -104,7 +104,7 @@ def recommend(userId):
                 for product in data: 
                     json_recommend_list.append(dict(zip(row_headers, product)))
 
-                recommend_list.append(dict(zip(row_headers, product)))
+                recommend_list += json_recommend_list
 
                 i = i + 1
                 if i > 4:
