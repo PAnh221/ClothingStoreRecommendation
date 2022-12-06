@@ -61,7 +61,6 @@ def recommend(user_id):
     # Calculate cosine similarity based on count matrix vectors
     cosineSimilarity = cosine_similarity(matrix)
 
-    # Return array
     recommend_list = []
 
     # Loop id in product in wishlist
@@ -94,10 +93,22 @@ def recommend(user_id):
 
     # Close connection
     cursor.close()
-    random.shuffle(recommend_list)
+    
+    # duplicate recommend remove    
+    dup_id = set()
 
+    duplicate_filter_list = []
 
-    return jsonify({'list': recommend_list})
+    # Check all in arr, if id not in the set, append for the new array
+    for obj in recommend_list:
+        if obj["id"] not in dup_id:
+            duplicate_filter_list.append(obj)
+            dup_id.add(obj["id"])
+    
+    # Randomize the recommended list
+    random.shuffle(duplicate_filter_list)
+
+    return jsonify({'list': duplicate_filter_list})
 
 
 app.run(host='localhost', port=8081)
