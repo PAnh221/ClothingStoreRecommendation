@@ -4,14 +4,16 @@ from sklearn.metrics.pairwise import cosine_similarity
 from flask import Flask, jsonify
 from flask_mysqldb import MySQL
 # pip install Flask-Cors==1.10.3
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 import random
 from config.helper_function import *  
 from repository.db_query import *
 # from tabulate import tabulate
 
+
 app = Flask(__name__)
 cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
@@ -21,6 +23,7 @@ app.config['MYSQL_DB'] = 'clothing_store'
 mysql = MySQL(app)
 
 @app.route('/recommend/<user_id>', methods=['GET'])
+@cross_origin(origin='*',headers=['Content-Type','Authorization'])
 def recommend(user_id):
     cursor = mysql.connection.cursor()
 
@@ -45,7 +48,7 @@ def recommend(user_id):
         table_product_data[col_name] = table_product_data[col_name].fillna('')
 
     def combineFeatures(row):
-        return str(row['id']) + str(row['category_id']) + " " + row['name'] + " " + str(row['price'])
+        return str(row['category_id']) + " " + row['name'] + " " + str(row['price'])
 
     table_product_data["combineFeatures"] = table_product_data.apply(
         combineFeatures, axis=1)
@@ -92,6 +95,7 @@ def recommend(user_id):
     # Close connection
     cursor.close()
     random.shuffle(recommend_list)
+
 
     return jsonify({'list': recommend_list})
 
